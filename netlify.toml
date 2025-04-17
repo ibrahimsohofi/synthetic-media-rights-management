@@ -1,0 +1,33 @@
+[images]
+  remote_images = ["https://images.unsplash.com", "https://picsum.photos", "https://*.unsplash.com"]
+
+[build]
+  command = "bun run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+
+[dev]
+  command = "next dev -H 0.0.0.0"
+  port = 3000
+  targetPort = 3000
+
+[functions]
+  directory = "netlify/functions"
+
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+  conditions = {Role = ["anonymous"]}
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

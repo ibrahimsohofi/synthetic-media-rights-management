@@ -1,0 +1,381 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// User model
+model User {
+  id                  String      @id @default(uuid())
+  email               String      @unique
+  passwordHash        String
+  name                String?
+  username            String?     @unique
+  bio                 String?
+  avatar              String?     @default("default-avatar.png")
+  creatorType         String?
+  portfolioUrl        String?
+  isPublic            Boolean     @default(true)
+  isEmailVerified     Boolean     @default(false)
+  notificationPreferences Json?
+
+  // Relations
+  ownedTeams          Team[]         @relation("TeamOwner")
+  teamMemberships     TeamMember[]
+  creativeWorks       CreativeWork[]
+
+  licenses            License[] // Licenses owned by user
+  licensesReceived    License[]  @relation("Licensee")
+  violations          Violation[]
+  marketplaceListings MarketplaceListing[]
+  transactions        Transaction[]
+  notifications       Notification[] // Notifications for the user
+  certificates        Certificate[] // Added relation to certificates
+
+  // Timestamps
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+}
+
+// Creative Work model
+model CreativeWork {
+  id                  String      @id @default(uuid())
+  title               String
+  description         String?
+  type                WorkType
+  category            String
+  fileUrls            String      // Comma-separated URLs
+  thumbnailUrl        String?
+  metadataHash        String?     @unique // For blockchain verification
+  aiTrainingOptOut    Boolean     @default(true)
+  detectionEnabled    Boolean     @default(true)
+  styleFingerprint    Json?       // Extracted style characteristics
+  keywords            String      // Comma-separated keywords
+  registrationStatus  RegistrationStatus @default(PENDING)
+  visibility          Visibility  @default(PRIVATE)
+
+  // Relations
+  ownerId             String
+  owner               User        @relation(fields: [ownerId], references: [id])
+  licenses            License[]
+  violations          Violation[]
+  marketplaceListings MarketplaceListing[]
+  blockchain          BlockchainRegistration?
+  certificates        Certificate[] // Added relation to certificates
+
+  // Timestamps
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@index([ownerId])
+  @@index([type])
+  @@index([registrationStatus])
+}
+
+// Blockchain Registration model
+model BlockchainRegistration {
+  id                  String      @id @default(uuid())
+  transactionId       String      @unique
+  blockNumber         Int
+  networkName         String
+  registeredAt        DateTime
+  verified            Boolean     @default(false)
+
+  // Relation to creative work
+  creativeWorkId      String      @unique
+  creativeWork        CreativeWork @relation(fields: [creativeWorkId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@index([transactionId])
+  @@index([creativeWorkId])
+}
+
+// License model
+model License {
+  id                  String      @id @default(uuid())
+  title               String
+  type                LicenseType
+  status              LicenseStatus @default(ACTIVE)
+  terms               Json
+  startDate           DateTime
+  endDate             DateTime?
+  price               Float?
+  royaltyPercentage   Float?
+  permissions         String      // Comma-separated permissions
+  restrictions        String      // Comma-separated restrictions
+  contractUrl         String?
+
+  // Relations
+  creativeWorkId      String
+  creativeWork        CreativeWork @relation(fields: [creativeWorkId], references: [id])
+  ownerId             String
+  owner               User        @relation(fields: [ownerId], references: [id])
+  licenseeId          String?
+  licensee            User?       @relation("Licensee", fields: [licenseeId], references: [id])
+
+  // Timestamps
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@index([ownerId])
+  @@index([licenseeId])
+  @@index([creativeWorkId])
+  @@index([status])
+}
+
+// Violation model
+model Violation {
+  id                  String      @id @default(uuid())
+  status              ViolationStatus @default(PENDING)
+  sourceUrl           String
+  detectionMethod     String
+  matchConfidence     Float
+  description         String?
+  evidenceUrls        String      // Comma-separated URLs
+  resolutionNotes     String?
+
+  // Relations
+  creativeWorkId      String
+  creativeWork        CreativeWork @relation(fields: [creativeWorkId], references: [id])
+  reportedById        String
+  reportedBy          User        @relation(fields: [reportedById], references: [id])
+
+  // Timestamps
+  detectedAt          DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  resolvedAt          DateTime?
+
+  @@index([creativeWorkId])
+  @@index([reportedById])
+  @@index([status])
+}
+
+// Marketplace Listing model
+model MarketplaceListing {
+  id                  String      @id @default(uuid())
+  title               String
+  description         String
+  price               Float
+  licenseType         LicenseType
+  duration            Int?        // In days
+  featured            Boolean     @default(false)
+  status              ListingStatus @default(ACTIVE)
+
+  // Relations
+  creativeWorkId      String
+  creativeWork        CreativeWork @relation(fields: [creativeWorkId], references: [id])
+  sellerId            String
+  seller              User        @relation(fields: [sellerId], references: [id])
+
+  // Timestamps
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  expiresAt           DateTime?
+
+  @@index([sellerId])
+  @@index([creativeWorkId])
+  @@index([status])
+}
+
+// Transaction model
+model Transaction {
+  id                  String      @id @default(uuid())
+  type                TransactionType
+  amount              Float
+  currency            String      @default("USD")
+  status              TransactionStatus @default(PENDING)
+  paymentMethod       String?
+  paymentId           String?     @unique
+  description         String?
+
+  // Relations
+  userId              String
+  user                User        @relation(fields: [userId], references: [id])
+
+  // Timestamps
+  createdAt           DateTime    @default(now())
+  completedAt         DateTime?
+
+  @@index([userId])
+  @@index([status])
+}
+
+// Notification model
+model Notification {
+  id          String             @id @default(uuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        NotificationType
+  title       String
+  message     String
+  linkUrl     String?
+  isRead      Boolean            @default(false)
+  metadata    Json?
+  createdAt   DateTime           @default(now())
+  expiresAt   DateTime?
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// Team model
+model Team {
+  id                  String      @id @default(uuid())
+  name                String
+  description         String?
+  avatarUrl           String?
+  inviteCode          String?     @unique
+  isPublic            Boolean     @default(false)
+
+  // Owner relation
+  ownerId             String
+  owner               User        @relation("TeamOwner", fields: [ownerId], references: [id])
+
+  // Members relation
+  members             TeamMember[]
+
+  // Timestamps
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@index([ownerId])
+}
+
+// Team Member model
+model TeamMember {
+  id                  String      @id @default(uuid())
+  role                TeamRole    @default(MEMBER)
+  status              MemberStatus @default(ACTIVE)
+  permissions         String      // Comma-separated permissions
+
+  // Relations
+  teamId              String
+  team                Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  joinedAt            DateTime    @default(now())
+  updatedAt           DateTime    @default(now())
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+// Certificate model for tracking verification certificates
+model Certificate {
+  id                  String      @id // Uses the certificateId generated by the certificate generator
+  workId              String
+  creativeWork        CreativeWork @relation(fields: [workId], references: [id], onDelete: Cascade)
+  ownerId             String
+  owner               User        @relation(fields: [ownerId], references: [id])
+  certificateType     String      // "standard", "premium", "enhanced"
+  metadataJson        String      // JSON stringified certificate metadata
+  signature           String      // Digital signature
+  publicUrl           String      // Public verification URL
+  isRevoked           Boolean     @default(false)
+  expiresAt           DateTime?   // Optional expiration date
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@index([workId])
+  @@index([ownerId])
+  @@index([createdAt])
+}
+
+// Enums for database
+enum WorkType {
+  IMAGE
+  VIDEO
+  AUDIO
+  TEXT
+}
+
+enum RegistrationStatus {
+  PENDING
+  REGISTERED
+  REJECTED
+}
+
+enum Visibility {
+  PRIVATE
+  PUBLIC
+  LIMITED
+}
+
+enum LicenseType {
+  COMMERCIAL
+  EXCLUSIVE
+  LIMITED
+  PERSONAL
+  EDUCATIONAL
+}
+
+enum LicenseStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  PENDING
+}
+
+enum ViolationStatus {
+  PENDING
+  CONFIRMED
+  DISMISSED
+  RESOLVED
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  EXPIRED
+  DRAFT
+}
+
+enum TransactionType {
+  PURCHASE
+  ROYALTY
+  SUBSCRIPTION
+  PAYOUT
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum NotificationType {
+  VIOLATION_DETECTED
+  LICENSE_CREATED
+  LICENSE_EXPIRED
+  MARKETPLACE_INTEREST
+  RIGHTS_REGISTERED
+  SYSTEM
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum MemberStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
