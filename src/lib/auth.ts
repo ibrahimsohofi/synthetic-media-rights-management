@@ -4,9 +4,13 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
 import type { User } from "@prisma/client";
 import { JWT } from "next-auth/jwt";
+import { getVercelURL, setupVercelEnvironment } from "./vercel-helpers";
+
+// Initialize environment for Vercel
+setupVercelEnvironment();
 
 // Make sure NEXTAUTH_URL is a string
-const nextAuthUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+const nextAuthUrl = process.env.NEXTAUTH_URL || getVercelURL() || "http://localhost:3000";
 
 /**
  * NextAuth configuration options

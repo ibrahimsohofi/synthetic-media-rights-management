@@ -5,9 +5,6 @@
   "outputDirectory": ".next",
   "regions": ["iad1"],
   "env": {
-    "NEXTAUTH_URL": {
-      "description": "URL of your deployed app"
-    },
     "NEXTAUTH_SECRET": {
       "description": "Secret key for NextAuth (min 32 chars)"
     },

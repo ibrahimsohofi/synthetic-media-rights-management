@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { rateLimitMiddleware } from "./lib/rate-limit";
 import { monitoring } from "./lib/monitoring";
+import { NextFetchEvent } from 'next/server';
 
 // Paths that don't require authentication
 const publicPaths = [
@@ -24,7 +25,10 @@ const noRateLimitPaths = [
   "/api/auth/verify-email",
 ];
 
-export async function middleware(request: NextRequest) {
+/**
+ * Middleware for handling request processing
+ */
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const startTime = Date.now();
   let userId: string | undefined;
 
@@ -115,6 +119,21 @@ export async function middleware(request: NextRequest) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   response.headers.set('X-Response-Time', `${duration}ms`);
+
+  // Get host from request headers
+  const host = request.headers.get('host') || 'localhost:3000';
+  
+  // Production Vercel deployment will have the following format
+  const isVercelProduction = 
+    host.includes('vercel.app') || 
+    !host.includes('localhost') && process.env.NODE_ENV === 'production';
+  
+  // For Vercel production deployment, ensure NEXTAUTH_URL is correctly set
+  if (isVercelProduction) {
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    process.env.NEXTAUTH_URL = `${protocol}://${host}`;
+    console.log('Middleware set NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
+  }
 
   return response;
 }
