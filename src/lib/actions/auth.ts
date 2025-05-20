@@ -1,32 +1,22 @@
 "use server";
 
-import { z } from "zod";
-import { hash } from "bcrypt";
+import { hash, compare } from "bcrypt";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { signIn } from "next-auth/react";
-
-// Schema for registration validation
-export const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string(),
-}).refine(async (data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
-
-export const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
-});
-
-// Type for registration response
-type RegisterResponse = {
-  success: boolean;
-  message: string;
-};
+import { authOptions } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { 
+  registerSchema, 
+  loginSchema, 
+  resetPasswordRequestSchema,
+  resetPasswordSchema,
+  type RegisterResponse,
+  type LoginResponse,
+  type PasswordResetResponse,
+  type EmailVerificationResponse
+} from "@/lib/schemas/auth";
+import { generateEmailVerificationToken, generatePasswordResetToken } from "@/lib/token-service";
+import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/email-service";
 
 /**
  * Register a new user
@@ -67,7 +57,7 @@ export async function registerUser(formData: FormData): Promise<RegisterResponse
     const username = email.split("@")[0].toLowerCase() + Math.floor(Math.random() * 1000);
 
     // Create user
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         name,
         email,
@@ -75,6 +65,9 @@ export async function registerUser(formData: FormData): Promise<RegisterResponse
         username,
       },
     });
+
+    // Send verification email
+    await sendVerificationEmailAction(user.id, email);
 
     // Redirect to login page
     redirect("/login?registered=true");
@@ -88,20 +81,124 @@ export async function registerUser(formData: FormData): Promise<RegisterResponse
 /**
  * Log in a user
  */
-export async function loginUser(formData: FormData) {
+export async function loginUser(formData: FormData): Promise<LoginResponse> {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const code = formData.get("code") as string | undefined;
 
   try {
-    await signIn("credentials", {
-      email,
-      password,
-      redirectTo: "/dashboard",
+    // Validate credentials
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { 
+        id: true, 
+        passwordHash: true,
+        twoFactorEnabled: true,
+        twoFactorSecret: true,
+      },
     });
-  } catch (error) {
-    if ((error as Error).message.includes("CredentialsSignin")) {
+
+    if (!user) {
       return { success: false, message: "Invalid email or password" };
     }
-    throw error;
+
+    const isValidPassword = await compare(password, user.passwordHash);
+
+    if (!isValidPassword) {
+      return { success: false, message: "Invalid email or password" };
+    }
+
+    // Handle 2FA if enabled
+    if (user.twoFactorEnabled) {
+      if (!code) {
+        return { success: false, message: "2FA code required" };
+      }
+
+      // Verify 2FA code
+      const isValidCode = await verifyTwoFactorCode(user.id, code);
+      if (!isValidCode) {
+        return { success: false, message: "Invalid 2FA code" };
+      }
+    }
+
+    // Check if already authenticated
+    const session = await getServerSession(authOptions);
+    if (session) {
+      redirect("/dashboard");
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Login error:", error);
+    return { success: false, message: "An error occurred during login" };
+  }
+}
+
+/**
+ * Request password reset
+ */
+export async function requestPasswordReset(email: string): Promise<PasswordResetResponse> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true },
+    });
+
+    if (!user) {
+      // Return success even if user doesn't exist to prevent email enumeration
+      return { success: true, message: "If an account exists, you will receive a password reset email" };
+    }
+
+    // Generate reset token
+    const token = await generatePasswordResetToken(user.id);
+
+    // Send reset email
+    await sendPasswordResetEmail(user.email, token);
+
+    return { success: true, message: "Password reset email sent" };
+  } catch (error) {
+    console.error("Password reset request error:", error);
+    return { success: false, message: "Failed to send reset email" };
+  }
+}
+
+/**
+ * Send verification email
+ */
+export async function sendVerificationEmailAction(userId: string, email: string): Promise<EmailVerificationResponse> {
+  try {
+    // Generate verification token
+    const token = await generateEmailVerificationToken(userId, email);
+
+    // Send verification email
+    await sendVerificationEmail(email, token);
+
+    return { success: true, message: "Verification email sent" };
+  } catch (error) {
+    console.error("Verification email error:", error);
+    return { success: false, message: "Failed to send verification email" };
+  }
+}
+
+/**
+ * Verify 2FA code
+ */
+async function verifyTwoFactorCode(userId: string, code: string): Promise<boolean> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { twoFactorSecret: true },
+    });
+
+    if (!user?.twoFactorSecret) {
+      return false;
+    }
+
+    // Verify the code using the stored secret
+    const isValid = await verifyTwoFactor(userId, code);
+    return isValid.success;
+  } catch (error) {
+    console.error("2FA verification error:", error);
+    return false;
   }
 }

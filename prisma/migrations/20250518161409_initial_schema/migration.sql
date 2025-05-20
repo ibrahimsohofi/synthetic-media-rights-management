@@ -1,4 +1,35 @@
 -- CreateTable
+CREATE TABLE "APIMetrics" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "endpoint" TEXT NOT NULL,
+    "method" TEXT NOT NULL,
+    "statusCode" INTEGER NOT NULL,
+    "duration" REAL NOT NULL,
+    "timestamp" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "userId" TEXT
+);
+
+-- CreateTable
+CREATE TABLE "ErrorLog" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "endpoint" TEXT NOT NULL,
+    "method" TEXT NOT NULL,
+    "errorCode" TEXT NOT NULL,
+    "errorMessage" TEXT NOT NULL,
+    "timestamp" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "userId" TEXT
+);
+
+-- CreateTable
+CREATE TABLE "RateLimitBucket" (
+    "identifier" TEXT NOT NULL PRIMARY KEY,
+    "tokens" REAL NOT NULL,
+    "lastRefill" DATETIME NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "email" TEXT NOT NULL,
@@ -12,6 +43,9 @@ CREATE TABLE "User" (
     "isPublic" BOOLEAN NOT NULL DEFAULT true,
     "isEmailVerified" BOOLEAN NOT NULL DEFAULT false,
     "notificationPreferences" JSONB,
+    "twoFactorEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "twoFactorSecret" TEXT,
+    "backupCodes" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
@@ -108,7 +142,7 @@ CREATE TABLE "MarketplaceListing" (
     "creativeWorkId" TEXT NOT NULL,
     "sellerId" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "expiresAt" DATETIME,
     CONSTRAINT "MarketplaceListing_creativeWorkId_fkey" FOREIGN KEY ("creativeWorkId") REFERENCES "CreativeWork" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "MarketplaceListing_sellerId_fkey" FOREIGN KEY ("sellerId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -168,10 +202,88 @@ CREATE TABLE "TeamMember" (
     "teamId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "joinedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "TeamMember_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "Team" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "TeamMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+-- CreateTable
+CREATE TABLE "Certificate" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "workId" TEXT NOT NULL,
+    "ownerId" TEXT NOT NULL,
+    "certificateType" TEXT NOT NULL,
+    "metadataJson" TEXT NOT NULL,
+    "signature" TEXT NOT NULL,
+    "publicUrl" TEXT NOT NULL,
+    "isRevoked" BOOLEAN NOT NULL DEFAULT false,
+    "expiresAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "Certificate_workId_fkey" FOREIGN KEY ("workId") REFERENCES "CreativeWork" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Certificate_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "ContentFingerprint" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "creativeWorkId" TEXT NOT NULL,
+    "fingerprintType" TEXT NOT NULL,
+    "fingerprintData" TEXT NOT NULL,
+    "algorithm" TEXT NOT NULL,
+    "version" TEXT NOT NULL,
+    "confidence" REAL NOT NULL,
+    "metadata" JSONB,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "ContentFingerprint_creativeWorkId_fkey" FOREIGN KEY ("creativeWorkId") REFERENCES "CreativeWork" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "DetectionScan" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "status" TEXT NOT NULL DEFAULT 'IN_PROGRESS',
+    "targetUrl" TEXT NOT NULL,
+    "scanType" TEXT NOT NULL,
+    "progress" REAL NOT NULL DEFAULT 0,
+    "resultsCount" INTEGER NOT NULL DEFAULT 0,
+    "scanConfig" JSONB,
+    "initiatedById" TEXT NOT NULL,
+    "startedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "completedAt" DATETIME,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "DetectionScan_initiatedById_fkey" FOREIGN KEY ("initiatedById") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "DetectionResult" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "scanId" TEXT NOT NULL,
+    "matchType" TEXT NOT NULL DEFAULT 'EXACT',
+    "confidence" REAL NOT NULL,
+    "sourceUrl" TEXT NOT NULL,
+    "contextData" JSONB,
+    "verified" BOOLEAN NOT NULL DEFAULT false,
+    "creativeWorkId" TEXT NOT NULL,
+    "violationId" TEXT,
+    "detectedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "DetectionResult_scanId_fkey" FOREIGN KEY ("scanId") REFERENCES "DetectionScan" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "DetectionResult_creativeWorkId_fkey" FOREIGN KEY ("creativeWorkId") REFERENCES "CreativeWork" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "DetectionResult_violationId_fkey" FOREIGN KEY ("violationId") REFERENCES "Violation" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateIndex
+CREATE INDEX "APIMetrics_endpoint_idx" ON "APIMetrics"("endpoint");
+
+-- CreateIndex
+CREATE INDEX "APIMetrics_timestamp_idx" ON "APIMetrics"("timestamp");
+
+-- CreateIndex
+CREATE INDEX "ErrorLog_endpoint_idx" ON "ErrorLog"("endpoint");
+
+-- CreateIndex
+CREATE INDEX "ErrorLog_timestamp_idx" ON "ErrorLog"("timestamp");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
@@ -265,3 +377,36 @@ CREATE INDEX "TeamMember_userId_idx" ON "TeamMember"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "TeamMember_teamId_userId_key" ON "TeamMember"("teamId", "userId");
+
+-- CreateIndex
+CREATE INDEX "Certificate_workId_idx" ON "Certificate"("workId");
+
+-- CreateIndex
+CREATE INDEX "Certificate_ownerId_idx" ON "Certificate"("ownerId");
+
+-- CreateIndex
+CREATE INDEX "Certificate_createdAt_idx" ON "Certificate"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "ContentFingerprint_creativeWorkId_idx" ON "ContentFingerprint"("creativeWorkId");
+
+-- CreateIndex
+CREATE INDEX "ContentFingerprint_fingerprintType_idx" ON "ContentFingerprint"("fingerprintType");
+
+-- CreateIndex
+CREATE INDEX "DetectionScan_initiatedById_idx" ON "DetectionScan"("initiatedById");
+
+-- CreateIndex
+CREATE INDEX "DetectionScan_status_idx" ON "DetectionScan"("status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "DetectionResult_violationId_key" ON "DetectionResult"("violationId");
+
+-- CreateIndex
+CREATE INDEX "DetectionResult_scanId_idx" ON "DetectionResult"("scanId");
+
+-- CreateIndex
+CREATE INDEX "DetectionResult_creativeWorkId_idx" ON "DetectionResult"("creativeWorkId");
+
+-- CreateIndex
+CREATE INDEX "DetectionResult_matchType_idx" ON "DetectionResult"("matchType");

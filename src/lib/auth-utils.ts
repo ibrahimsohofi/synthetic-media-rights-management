@@ -1,12 +1,11 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 /**
  * Get the current session on the server
  */
 export async function getSession() {
-  return await getServerSession(authOptions);
+  return await auth();
 }
 
 /**

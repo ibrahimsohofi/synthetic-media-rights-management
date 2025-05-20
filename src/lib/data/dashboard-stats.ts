@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth-utils";
+import type { WorkType } from "@prisma/client";
 
 export interface DashboardStats {
   registeredWorks: {
@@ -172,7 +173,7 @@ async function getWorksBreakdown(userId: string) {
   };
 
   // Fill in actual counts
-  worksByType.forEach(item => {
+  worksByType.forEach((item: { type: WorkType; _count: number }) => {
     if (item.type === 'IMAGE') breakdown.images = item._count;
     if (item.type === 'VIDEO') breakdown.videos = item._count;
     if (item.type === 'AUDIO') breakdown.audio = item._count;
@@ -192,7 +193,7 @@ async function getTotalRevenue(userId: string) {
       where: {
         userId,
         status: "COMPLETED",
-        type: { in: ["PURCHASE", "ROYALTY"] }
+        type: { in: ["SALE", "SUBSCRIPTION"] }
       },
       select: {
         amount: true
@@ -200,7 +201,7 @@ async function getTotalRevenue(userId: string) {
     });
 
     // Sum up all transaction amounts
-    const totalAmount = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+    const totalAmount = transactions.reduce((sum: number, tx: { amount: number }) => sum + tx.amount, 0);
 
     // If there are actual transactions, return the sum, otherwise return a sample value
     return transactions.length > 0 ? Math.round(totalAmount) : 2489;
@@ -220,7 +221,7 @@ async function getRecentRevenue(userId: string, since: Date) {
       where: {
         userId,
         status: "COMPLETED",
-        type: { in: ["PURCHASE", "ROYALTY"] },
+        type: { in: ["SALE", "SUBSCRIPTION"] },
         createdAt: { gt: since }
       },
       select: {
@@ -229,7 +230,7 @@ async function getRecentRevenue(userId: string, since: Date) {
     });
 
     // Sum up all transaction amounts
-    const totalAmount = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+    const totalAmount = transactions.reduce((sum: number, tx: { amount: number }) => sum + tx.amount, 0);
 
     // If there are actual transactions, return the sum, otherwise return a sample value
     return transactions.length > 0 ? Math.round(totalAmount) : 347;

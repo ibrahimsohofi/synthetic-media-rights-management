@@ -2,12 +2,13 @@
   remote_images = ["https://*.unsplash.com", "https://*.pexels.com", "https://*.picsum.photos", "https://*.*.amazonaws.com", "https://*.cloudinary.com"]
 
 [build]
-  command = "next build"
+  command = "npm run build"
   publish = ".next"
 
 [build.environment]
   NODE_VERSION = "20"
   NETLIFY_NEXT_PLUGIN_SKIP = "true"
+  NEXT_USE_NETLIFY_EDGE = "true"
 
 [dev]
   command = "next dev -H 0.0.0.0"
@@ -16,6 +17,7 @@
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
 
 [[headers]]
   for = "/_next/static/*"
@@ -24,10 +26,17 @@
 
 [[redirects]]
   from = "/*"
-  to = "/index.html"
-  status = 200
+  to = "/404"
+  status = 404
   force = false
   conditions = {Role = ["anonymous"]}
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Force https
+[[redirects]]
+  from = "http://*"
+  to = "https://:splat"
+  status = 301
+  force = true

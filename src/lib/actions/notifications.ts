@@ -1,33 +1,23 @@
 "use server";
 
-import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import type { NotificationType } from "@prisma/client";
 import { redirect } from "next/navigation";
-
-// Schema for notification creation
-export const createNotificationSchema = z.object({
-  userId: z.string(),
-  type: z.enum([
-    "VIOLATION_DETECTED",
-    "LICENSE_CREATED",
-    "LICENSE_EXPIRED",
-    "MARKETPLACE_INTEREST",
-    "RIGHTS_REGISTERED",
-    "SYSTEM"
-  ]),
-  title: z.string(),
-  message: z.string(),
-  linkUrl: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
-});
+import { createNotificationSchema } from "@/lib/schemas/notifications";
 
 // Type for notification response
 type NotificationResponse = {
   success: boolean;
   message: string;
   notification?: any;
+};
+
+// Type for notifications response
+type NotificationsResponse = {
+  success: boolean;
+  message?: string;
+  notifications: any[];
 };
 
 /**
@@ -114,17 +104,24 @@ export async function createViolationNotification(
 /**
  * Get all notifications for the current user
  */
-export async function getUserNotifications(limit?: number) {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    return { success: false, message: "Authentication required", notifications: [] };
-  }
-
+export async function getUserNotifications({
+  userId,
+  page = 1,
+  limit = 10,
+  unreadOnly = false
+}: {
+  userId: string;
+  page?: number;
+  limit?: number;
+  unreadOnly?: boolean;
+}): Promise<NotificationsResponse> {
   try {
+    const skip = (page - 1) * limit;
+
     const notifications = await prisma.notification.findMany({
       where: {
-        userId: user.id,
+        userId,
+        ...(unreadOnly ? { isRead: false } : {}),
         expiresAt: {
           gt: new Date(),
         },
@@ -132,6 +129,7 @@ export async function getUserNotifications(limit?: number) {
       orderBy: {
         createdAt: "desc",
       },
+      skip,
       take: limit,
     });
 

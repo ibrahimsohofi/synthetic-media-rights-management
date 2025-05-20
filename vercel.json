@@ -1,0 +1,24 @@
+{
+  "buildCommand": "prisma generate && prisma migrate deploy && next build",
+  "framework": "nextjs",
+  "installCommand": "bun install",
+  "outputDirectory": ".next",
+  "regions": ["iad1"],
+  "env": {
+    "NEXTAUTH_URL": {
+      "description": "URL of your deployed app"
+    },
+    "NEXTAUTH_SECRET": {
+      "description": "Secret key for NextAuth (min 32 chars)"
+    },
+    "DATABASE_URL": {
+      "description": "Connection string for your production database"
+    },
+    "UPSTASH_REDIS_REST_URL": {
+      "description": "Upstash Redis REST URL for rate limiting and caching"
+    },
+    "UPSTASH_REDIS_REST_TOKEN": {
+      "description": "Upstash Redis REST Token"
+    }
+  }
+} 

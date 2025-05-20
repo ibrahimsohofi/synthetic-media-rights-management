@@ -7,13 +7,22 @@ import { redirectIfAuthenticated } from "@/lib/auth-utils";
 import { registerUser } from "@/lib/actions/auth";
 import { ShieldCheck, User, Mail, Lock, ArrowRight } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
+
+interface SearchParams {
+  error?: string;
+}
+
 export default async function RegisterPage({
-  searchParams,
+  searchParams = {} as SearchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: SearchParams;
 }) {
   // Redirect if already authenticated
   await redirectIfAuthenticated();
+
+  // Get error message if it exists
+  const errorMessage = searchParams?.error;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 bg-muted/30">
@@ -39,9 +48,9 @@ export default async function RegisterPage({
             Sign up to manage and protect your creative works
           </CardDescription>
 
-          {searchParams.error && (
+          {errorMessage && (
             <div className="bg-red-50 text-red-700 text-sm p-3 rounded-md mt-3 dark:bg-red-900/20 dark:text-red-400">
-              {searchParams.error}
+              {errorMessage}
             </div>
           )}
         </CardHeader>

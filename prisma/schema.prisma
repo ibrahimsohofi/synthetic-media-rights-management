@@ -7,7 +7,44 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
+}
+
+// API Metrics model
+model APIMetrics {
+  id          String      @id @default(uuid())
+  endpoint    String
+  method      String
+  statusCode  Int
+  duration    Float       // in milliseconds
+  timestamp   DateTime    @default(now())
+  userId      String?
+  
+  @@index([endpoint])
+  @@index([timestamp])
+}
+
+// Error Log model
+model ErrorLog {
+  id            String      @id @default(uuid())
+  endpoint      String
+  method        String
+  errorCode     String
+  errorMessage  String
+  timestamp     DateTime    @default(now())
+  userId        String?
+  
+  @@index([endpoint])
+  @@index([timestamp])
+}
+
+// Rate Limit Bucket model
+model RateLimitBucket {
+  identifier    String      @id
+  tokens        Float
+  lastRefill    DateTime
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 // User model
@@ -24,19 +61,24 @@ model User {
   isPublic            Boolean     @default(true)
   isEmailVerified     Boolean     @default(false)
   notificationPreferences Json?
+  
+  // 2FA fields
+  twoFactorEnabled    Boolean     @default(false)
+  twoFactorSecret     String?
+  backupCodes         String?     // JSON array of hashed backup codes
 
   // Relations
   ownedTeams          Team[]         @relation("TeamOwner")
   teamMemberships     TeamMember[]
   creativeWorks       CreativeWork[]
-
-  licenses            License[] // Licenses owned by user
-  licensesReceived    License[]  @relation("Licensee")
+  initiatedScans      DetectionScan[]
+  licenses            License[]
+  licensesReceived    License[]      @relation("Licensee")
   violations          Violation[]
   marketplaceListings MarketplaceListing[]
   transactions        Transaction[]
-  notifications       Notification[] // Notifications for the user
-  certificates        Certificate[] // Added relation to certificates
+  notifications       Notification[]
+  certificates        Certificate[]
 
   // Timestamps
   createdAt           DateTime    @default(now())
@@ -68,6 +110,8 @@ model CreativeWork {
   marketplaceListings MarketplaceListing[]
   blockchain          BlockchainRegistration?
   certificates        Certificate[] // Added relation to certificates
+  fingerprints        ContentFingerprint[]
+  detectionResults    DetectionResult[]
 
   // Timestamps
   createdAt           DateTime    @default(now())
@@ -148,6 +192,7 @@ model Violation {
   creativeWork        CreativeWork @relation(fields: [creativeWorkId], references: [id])
   reportedById        String
   reportedBy          User        @relation(fields: [reportedById], references: [id])
+  detectionResult     DetectionResult? @relation("ViolationResult")
 
   // Timestamps
   detectedAt          DateTime    @default(now())
@@ -296,6 +341,76 @@ model Certificate {
   @@index([createdAt])
 }
 
+// ContentFingerprint model for storing digital fingerprints
+model ContentFingerprint {
+  id                  String      @id @default(uuid())
+  creativeWorkId      String
+  creativeWork        CreativeWork @relation(fields: [creativeWorkId], references: [id])
+  fingerprintType     String      // e.g., "perceptual_hash", "wavelet_transform", "deep_features"
+  fingerprintData     String      // The actual fingerprint data
+  algorithm           String      // Algorithm used to generate the fingerprint
+  version             String      // Version of the algorithm
+  confidence         Float       // Confidence score of the fingerprint
+  metadata           Json?       // Additional metadata about the fingerprint
+
+  // Timestamps
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@index([creativeWorkId])
+  @@index([fingerprintType])
+}
+
+// DetectionScan model for tracking content scans
+model DetectionScan {
+  id                  String      @id @default(uuid())
+  status              ScanStatus  @default(IN_PROGRESS)
+  targetUrl           String      // URL or identifier of content being scanned
+  scanType            String      // Type of scan (e.g., "web", "social_media", "marketplace")
+  progress            Float       @default(0) // Progress percentage
+  resultsCount        Int         @default(0) // Number of matches found
+  scanConfig          Json?       // Configuration used for the scan
+  
+  // Relations
+  results             DetectionResult[]
+  initiatedById       String
+  initiatedBy         User        @relation(fields: [initiatedById], references: [id])
+
+  // Timestamps
+  startedAt           DateTime    @default(now())
+  completedAt         DateTime?
+  updatedAt           DateTime    @updatedAt
+
+  @@index([initiatedById])
+  @@index([status])
+}
+
+// DetectionResult model for storing scan results
+model DetectionResult {
+  id                  String      @id @default(uuid())
+  scanId              String
+  scan                DetectionScan @relation(fields: [scanId], references: [id])
+  matchType           MatchType   @default(EXACT)
+  confidence         Float
+  sourceUrl          String
+  contextData        Json?       // Additional context about the match
+  verified           Boolean     @default(false)
+  
+  // Relations
+  creativeWorkId      String
+  creativeWork        CreativeWork @relation(fields: [creativeWorkId], references: [id])
+  violation          Violation?  @relation("ViolationResult", fields: [violationId], references: [id])
+  violationId        String?     @unique
+
+  // Timestamps
+  detectedAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@index([scanId])
+  @@index([creativeWorkId])
+  @@index([matchType])
+}
+
 // Enums for database
 enum WorkType {
   IMAGE
@@ -379,4 +494,20 @@ enum NotificationType {
   CERTIFICATE_GENERATED
   CERTIFICATE_REVOKED
   TEAM_INVITATION
+}
+
+enum ScanStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum MatchType {
+  EXACT
+  SIMILAR
+  DERIVATIVE
+  PARTIAL
+  UNKNOWN
 }

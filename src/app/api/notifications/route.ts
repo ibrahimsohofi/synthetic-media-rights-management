@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     if (!result.success) {
       return NextResponse.json(
-        { error: result.error || "Failed to get notifications" },
+        { error: result.message || "Failed to get notifications" },
         { status: 500 }
       );
     }

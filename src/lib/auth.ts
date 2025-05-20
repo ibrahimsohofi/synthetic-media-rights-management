@@ -1,6 +1,6 @@
+import NextAuth from "next-auth";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { compare } from "bcrypt";
 import { prisma } from "./prisma";
 import type { User } from "@prisma/client";
 import { JWT } from "next-auth/jwt";
@@ -25,32 +25,49 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        console.log("Authorize function called with email:", credentials?.email);
+        
         if (!credentials?.email || !credentials?.password) {
+          console.log("Missing email or password");
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email,
-          },
-        });
+        try {
+          const user = await prisma.user.findUnique({
+            where: {
+              email: credentials.email,
+            },
+          });
 
-        if (!user) {
+          console.log("User found:", user ? "yes" : "no");
+
+          if (!user) {
+            console.log("No user found with email:", credentials.email);
+            return null;
+          }
+
+          console.log("Comparing password...");
+          // Dynamically import bcrypt to avoid client-side issues
+          const { compare } = await import("bcrypt");
+          const passwordValid = await compare(credentials.password, user.passwordHash);
+          console.log("Password valid:", passwordValid);
+
+          if (!passwordValid) {
+            console.log("Invalid password");
+            return null;
+          }
+
+          console.log("Login successful for user:", user.email);
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            username: user.username,
+          };
+        } catch (error) {
+          console.error("Error during authorization:", error);
           return null;
         }
-
-        const passwordValid = await compare(credentials.password, user.passwordHash);
-
-        if (!passwordValid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          username: user.username,
-        };
       },
     }),
   ],
@@ -76,6 +93,11 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
+
+/**
+ * Export the auth function for Next Auth v5
+ */
+export const { auth, handlers } = NextAuth(authOptions);
 
 /**
  * Type definition for NextAuth session

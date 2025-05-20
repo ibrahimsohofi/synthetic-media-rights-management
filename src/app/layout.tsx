@@ -6,31 +6,34 @@ import { Inter } from "next/font/google";
 import ClientBody from "./ClientBody";
 import { LiveChat } from "@/components/ui/live-chat"; // Fixed import path for LiveChat component
 import { I18nProvider } from "@/components/i18n-provider"; // Import I18nProvider instead
+import { Providers } from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Synthetic Media Rights Management Platform",
-  description: "Protect and manage rights for AI-generated and synthetic media content",
+  title: "Threat Analysis Dashboard",
+  description: "A comprehensive security threat analysis and monitoring dashboard",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <I18nProvider>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <ClientBody>
-              {children}
-              <LiveChat />
-            </ClientBody>
-            <Toaster position="top-right" richColors closeButton />
-          </ThemeProvider>
-        </I18nProvider>
+        <Providers>
+          <I18nProvider>
+            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+              <ClientBody>
+                {children}
+                <LiveChat />
+              </ClientBody>
+              <Toaster position="top-right" richColors closeButton />
+            </ThemeProvider>
+          </I18nProvider>
+        </Providers>
       </body>
     </html>
   );

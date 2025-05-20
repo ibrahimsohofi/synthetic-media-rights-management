@@ -1,152 +1,191 @@
-<<<<<<< HEAD
-# Synthetic Media Rights Management Platform
+# Next.js Application Monitoring System
 
-A comprehensive platform for creators to register, protect, license, and monetize their synthetic media assets in the age of AI-generated content.
+A comprehensive monitoring and observability system built with Next.js, Prisma, and Redis.
 
-## 🚀 Features
+## Features
 
-- **Rights Registry**: Register your synthetic media creations with blockchain verification
-- **Licensing Management**: Create and manage licenses for your creative works
-- **Rights Detection**: Scan for unauthorized usage of your content across the web
-- **Marketplace**: Buy and sell synthetic media rights and licenses
-- **Analytics**: Track usage, violations, and licensing revenue
-- **Notifications**: Stay informed about important events related to your media
-- **Team Collaboration**: Work with other creators and stakeholders
-- **User Dashboard**: Manage all aspects of your synthetic media rights
-- **Communication**: Message creators, licensees, and support through integrated messaging
+- Real-time API metrics tracking
+- Error logging and monitoring
+- Health check endpoints
+- Performance monitoring
+- Alerting system
+- Monitoring dashboard
+- Security monitoring
+- Structured logging
 
-## 🛠️ Technology Stack
+## Tech Stack
 
-- **Frontend**: Next.js 15.2, React 18, TypeScript
-- **UI**: Tailwind CSS, shadcn/ui component library
-- **Backend**: Next.js API Routes with serverless functions
-- **Database**: Prisma ORM with SQLite (development) / PostgreSQL (production)
-- **Authentication**: NextAuth.js with credential provider
-- **Storage**: Cloudinary for media files
-- **Media Processing**: Custom fingerprinting algorithms
-- **Blockchain Integration**: For permanent rights registration
+- **Framework**: Next.js
+- **Database**: PostgreSQL (via Prisma)
+- **Caching**: Redis (Upstash)
+- **Monitoring**: Custom monitoring service
+- **Alerting**: Email/Slack notifications
+- **Testing**: Jest, React Testing Library
 
-## 🏗️ Project Structure
+## Prerequisites
 
-- `/src/app` - Next.js application pages
-- `/src/components` - Reusable UI components
-- `/src/lib` - Utility functions and business logic
-- `/prisma` - Database schema and migrations
-- `/public` - Static assets
+- Node.js 18.x or later
+- PostgreSQL database
+- Redis instance (Upstash)
+- SMTP server (for email alerts)
+- Slack workspace (for Slack notifications)
 
-## ⚙️ Setup Instructions
+## Environment Variables
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   bun install
-   ```
-3. Set up your environment variables:
-   ```
-   cp .env.example .env.local
-   ```
-4. Initialize the database:
-   ```bash
-   bunx prisma migrate dev
-   ```
-5. Seed the database:
-   ```bash
-   bun run seed
-   ```
-6. Start the development server:
-   ```bash
-   bun run dev
-   ```
+Create a `.env` file in the root directory with the following variables:
 
-## 🔐 Authentication
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/dbname"
 
-The application uses NextAuth.js for authentication. You can log in with:
+# Redis (Upstash)
+UPSTASH_REDIS_REST_URL="your-redis-url"
+UPSTASH_REDIS_REST_TOKEN="your-redis-token"
 
-- Email: `demo@syntheticrights.com`
-- Password: `password123`
+# Application
+NODE_ENV="development"
+PORT=3000
 
-## 📋 Recent Updates
+# Monitoring
+METRICS_RETENTION_DAYS=7
+ERROR_RETENTION_DAYS=30
+ALERT_THRESHOLD_ERROR_RATE=5
+ALERT_THRESHOLD_RESPONSE_TIME=1000
 
-### Version 7 - Added Support & Messages Pages
-- Added comprehensive Help & Support page with FAQs, documentation, and contact form
-- Created Messages feature with conversation list and message display interface
-- Implemented tabbed interface for filtering conversations by All, Unread, and Support
-- Added mock data for demonstration purposes
+# Email Alerts (SMTP)
+SMTP_HOST="smtp.example.com"
+SMTP_PORT=587
+SMTP_USER="your-smtp-user"
+SMTP_PASSWORD="your-smtp-password"
+ALERT_EMAIL_FROM="alerts@example.com"
+ALERT_EMAIL_TO="admin@example.com"
 
-### Version 6 - Notification System
-- Added real-time notification system
-- Created UI components for displaying notifications
-- Implemented notification count indicator
-- Added API routes for managing notifications
+# Slack Alerts
+SLACK_WEBHOOK_URL="your-slack-webhook-url"
 
-### Version 5 - Analytics Dashboard
-- Implemented analytics dashboard with usage metrics
-- Added charts and visualizations for rights activity
-- Created data aggregation utilities
-
-## 📊 Database Schema
-
-The platform uses a relational database with the following core models:
-
-- **User**: Account information and profile data
-- **CreativeWork**: Registered media assets
-- **License**: Usage rights and terms
-- **Violation**: Detected unauthorized usage
-- **MarketplaceListing**: Items for sale
-- **Transaction**: Financial records
-- **Notification**: User alerts
-- **Team & TeamMember**: Collaboration structures
-- **BlockchainRegistration**: Verification records
-
-## 🗺️ Roadmap
-
-- [ ] Advanced AI detection algorithms for derivative works
-- [ ] Blockchain certificate generation for rights proof
-- [ ] Integration with major stock media platforms
-- [ ] Mobile application for on-the-go rights management
-- [ ] Automated DMCA takedown process
-- [ ] Multi-language support
-- [ ] AI training permission management
-- [ ] Enhanced analytics and reporting
-
-## 📜 License
-
-This project is proprietary software. All rights reserved.
-=======
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Security
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Installation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd <project-directory>
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. Install dependencies:
+```bash
+npm install
+```
 
-## Learn More
+3. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
 
-To learn more about Next.js, take a look at the following resources:
+4. Run database migrations:
+```bash
+npx prisma migrate dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. Start the development server:
+```bash
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project Structure
 
-## Deploy on Vercel
+```
+src/
+├── app/                    # Next.js app directory
+│   ├── api/               # API routes
+│   │   ├── health/        # Health check endpoint
+│   │   ├── metrics/       # Metrics endpoints
+│   │   └── alerts/        # Alert management
+│   └── dashboard/         # Monitoring dashboard
+├── lib/                   # Core libraries
+│   ├── monitoring/        # Monitoring service
+│   ├── alerts/           # Alerting system
+│   ├── security/         # Security monitoring
+│   └── logging/          # Logging utilities
+├── components/           # React components
+├── types/               # TypeScript types
+└── utils/              # Utility functions
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Monitoring Dashboard
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
->>>>>>> 5ef4f3ae27a1e54782aeb7c28db59316fe49f5e8
+Access the monitoring dashboard at `/dashboard` after starting the application. The dashboard provides:
+
+- Real-time API metrics
+- Error rates and logs
+- Service health status
+- Performance trends
+- Security alerts
+
+## Alerting System
+
+The system supports multiple alert channels:
+
+- Email notifications for critical errors
+- Slack notifications for service issues
+- In-app alerts for performance degradation
+
+Configure alert thresholds in the `.env` file.
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run e2e tests
+npm run test:e2e
+```
+
+### Code Quality
+
+```bash
+# Run linter
+npm run lint
+
+# Run type check
+npm run type-check
+
+# Format code
+npm run format
+```
+
+## Deployment
+
+The application is configured for deployment on Railway. The `railway.json` file contains the necessary configuration.
+
+1. Push to your repository
+2. Connect to Railway
+3. Set up environment variables
+4. Deploy
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+
+MIT
+
+## Support
+
+For support, please open an issue in the repository or contact the maintainers.

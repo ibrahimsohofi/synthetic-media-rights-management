@@ -1,10 +1,10 @@
 // Update the license functions to use comma-separated strings instead of arrays for SQLite compatibility
 "use server";
 
-import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import type { LicenseType } from "@prisma/client";
+import { createLicenseSchema } from "@/lib/schemas/licensing";
 
 // Schema for license creation validation
 export const createLicenseSchema = z.object({
