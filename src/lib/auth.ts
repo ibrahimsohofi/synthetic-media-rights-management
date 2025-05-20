@@ -5,6 +5,9 @@ import { prisma } from "./prisma";
 import type { User } from "@prisma/client";
 import { JWT } from "next-auth/jwt";
 
+// Make sure NEXTAUTH_URL is a string
+const nextAuthUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+
 /**
  * NextAuth configuration options
  */
@@ -92,6 +95,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
+  // Explicitly set the URL as a string
+  trustHost: true,
 };
 
 /**
